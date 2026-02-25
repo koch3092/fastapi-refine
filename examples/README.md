@@ -22,6 +22,7 @@ Then visit:
   - Filter active items: http://localhost:8000/items?is_active=true
   - Sort by price: http://localhost:8000/items?_sort=price&_order=desc
   - Pagination: http://localhost:8000/items?_start=0&_end=10
+  - Legacy params (`skip`/`limit`) return 422 in 0.2.x
   - Search: http://localhost:8000/items?q=search+term
 
 ## Testing with Refine

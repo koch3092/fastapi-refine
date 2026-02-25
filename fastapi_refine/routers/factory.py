@@ -128,10 +128,8 @@ class RefineCRUDRouter(Generic[ModelT, CreateSchemaT, UpdateSchemaT, PublicSchem
         request: Any,  # Request
         response: Response,
         session: Session,
-        skip: int = 0,
-        limit: int = 100,
-        _start: int | None = Query(None, alias="_start"),
-        _end: int | None = Query(None, alias="_end"),
+        _start: int | None = Query(None, alias="_start", ge=0),
+        _end: int | None = Query(None, alias="_end", ge=0),
         _sort: str | None = Query(None, alias="_sort"),
         _order: str | None = Query(None, alias="_order"),
         id: list[Any] | None = Query(None),
@@ -147,8 +145,6 @@ class RefineCRUDRouter(Generic[ModelT, CreateSchemaT, UpdateSchemaT, PublicSchem
             _end=_end,
             _sort=_sort,
             _order=_order,
-            skip=skip,
-            limit=limit,
             request=request,
         )
 

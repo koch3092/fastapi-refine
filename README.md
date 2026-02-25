@@ -174,9 +174,9 @@ crud_router = RefineCRUDRouter(
 from fastapi_refine import PaginationConfig, RefineCRUDRouter
 
 pagination_config = PaginationConfig(
-    default_skip=0,
-    default_limit=50,
-    max_limit=500,  # Prevent excessive queries
+    default_start=0,
+    default_page_size=50,
+    max_page_size=500,  # Prevent excessive queries
 )
 
 crud_router = RefineCRUDRouter(
@@ -203,7 +203,7 @@ The library parses Refine simple-rest query parameters:
 
 ### Pagination
 - Range-based: `_start=0&_end=20`
-- Offset-based: `skip=0&limit=20`
+- Legacy `skip`/`limit` is rejected with `422` in `0.2.x` (planned to be silently ignored after `0.5.x`).
 
 ### Example Query
 ```

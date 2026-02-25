@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import Query, Request
+from fastapi import HTTPException, Query, Request, status
 from sqlalchemy import ColumnElement
 from sqlmodel import SQLModel
 
 from fastapi_refine.core import FilterConfig, PaginationConfig, SortConfig
 from fastapi_refine.core.query import (
+    ensure_no_legacy_pagination_params,
     parse_filters,
     parse_sorters,
     resolve_pagination,
@@ -43,8 +44,6 @@ class RefineQuery:
         _end: int | None = None,
         _sort: str | None = None,
         _order: str | None = None,
-        skip: int = 0,
-        limit: int = 100,
         request: Request | None = None,
     ):
         self.model = model
@@ -54,6 +53,14 @@ class RefineQuery:
 
         # Parse filters
         if request:
+            try:
+                ensure_no_legacy_pagination_params(request.query_params)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=str(exc),
+                ) from exc
+
             self.conditions = parse_filters(
                 request.query_params,
                 filter_fields=filter_config.fields,
@@ -66,12 +73,19 @@ class RefineQuery:
         self.order_by = parse_sorters(_sort, _order, sort_fields=sort_config.fields)
 
         # Parse pagination
-        self.offset, self.limit = resolve_pagination(
-            _start=_start,
-            _end=_end,
-            skip=skip,
-            limit=min(limit, self.pagination_config.max_limit),
-        )
+        try:
+            self.offset, self.limit = resolve_pagination(
+                _start=_start,
+                _end=_end,
+                default_start=self.pagination_config.default_start,
+                default_page_size=self.pagination_config.default_page_size,
+                max_page_size=self.pagination_config.max_page_size,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=str(exc),
+            ) from exc
 
     def get_count(
         self, session: Any, conditions: list[ColumnElement[Any]] | None = None
@@ -132,12 +146,10 @@ def refine_query(
 
     def dependency(
         request: Request,
-        _start: int | None = Query(None, alias="_start"),
-        _end: int | None = Query(None, alias="_end"),
+        _start: int | None = Query(None, alias="_start", ge=0),
+        _end: int | None = Query(None, alias="_end", ge=0),
         _sort: str | None = Query(None, alias="_sort"),
         _order: str | None = Query(None, alias="_order"),
-        skip: int = 0,
-        limit: int = 100,
     ) -> RefineQuery:
         return RefineQuery(
             model=model,
@@ -148,8 +160,6 @@ def refine_query(
             _end=_end,
             _sort=_sort,
             _order=_order,
-            skip=skip,
-            limit=limit,
             request=request,
         )
 

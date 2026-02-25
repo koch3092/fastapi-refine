@@ -1,5 +1,6 @@
 """Basic usage example of fastapi-refine."""
 
+from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -51,8 +52,15 @@ class ItemPublic(SQLModel):
     price: float
 
 
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Create tables on application startup."""
+    SQLModel.metadata.create_all(engine)
+    yield
+
+
 # FastAPI app
-app = FastAPI(title="fastapi-refine Example")
+app = FastAPI(title="fastapi-refine Example", lifespan=lifespan)
 
 
 # Configure filters and sorting
@@ -73,12 +81,6 @@ sort_config = SortConfig(
         "price": Item.price,
     }
 )
-
-
-@app.on_event("startup")
-def on_startup():
-    """Create tables on startup."""
-    SQLModel.metadata.create_all(engine)
 
 
 @app.get("/items", response_model=list[ItemPublic])

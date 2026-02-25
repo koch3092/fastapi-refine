@@ -50,14 +50,14 @@ class SortConfig:
 
 @dataclass
 class PaginationConfig:
-    """Pagination configuration.
+    """Pagination configuration for Refine simple-rest range pagination.
 
     Args:
-        default_skip: Default offset for skip pagination
-        default_limit: Default limit for skip/limit pagination
-        max_limit: Maximum allowed limit (prevents excessive queries)
+        default_start: Default `_start` value when `_start` is omitted.
+        default_page_size: Default page size used when `_end` is omitted.
+        max_page_size: Maximum allowed page size (prevents excessive queries).
     """
 
-    default_skip: int = 0
-    default_limit: int = 100
-    max_limit: int = 1000
+    default_start: int = 0
+    default_page_size: int = 100
+    max_page_size: int = 1000

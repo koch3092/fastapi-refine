@@ -12,11 +12,13 @@ __all__ = [
     "parse_filters",
     "parse_sorters",
     "resolve_pagination",
+    "ensure_no_legacy_pagination_params",
     "parse_bool",
     "parse_uuid",
 ]
 
-IGNORED_QUERY_KEYS = {"_start", "_end", "_sort", "_order", "id", "skip", "limit"}
+LEGACY_PAGINATION_QUERY_KEYS = {"skip", "limit"}
+IGNORED_QUERY_KEYS = {"_start", "_end", "_sort", "_order", "id", *LEGACY_PAGINATION_QUERY_KEYS}
 
 
 def parse_bool(value: str) -> bool:
@@ -159,29 +161,73 @@ def parse_sorters(
     return order_by
 
 
+def ensure_no_legacy_pagination_params(query_params: QueryParams) -> None:
+    """Reject legacy skip/limit pagination parameters.
+
+    TODO(0.5.x): stop returning 422 for legacy keys and silently ignore them.
+    """
+    legacy_keys = sorted(
+        {
+            key
+            for key, _ in query_params.multi_items()
+            if key in LEGACY_PAGINATION_QUERY_KEYS
+        }
+    )
+
+    if legacy_keys:
+        supported = "`_start` and `_end`"
+        raise ValueError(
+            "Legacy pagination parameters are not supported: "
+            f"{', '.join(legacy_keys)}. Use {supported} instead."
+        )
+
+
 def resolve_pagination(
     *,
     _start: int | None,
     _end: int | None,
-    skip: int,
-    limit: int,
+    default_start: int,
+    default_page_size: int,
+    max_page_size: int,
 ) -> tuple[int, int]:
-    """Resolve pagination from Refine simple-rest parameters.
+    """Resolve pagination from Refine simple-rest range parameters.
 
-    Supports both range-based (_start, _end) and offset-based (skip, limit) pagination.
+    Supports only range-based pagination (`_start`, `_end`). Returned values are
+    translated into SQLAlchemy-compatible `(offset, limit)`.
 
     Args:
         _start: Range start (0-based, inclusive)
         _end: Range end (0-based, exclusive)
-        skip: Offset for skip/limit pagination
-        limit: Maximum number of items to return
+        default_start: Default start when `_start` is omitted
+        default_page_size: Default page size when `_end` is omitted
+        max_page_size: Maximum allowed page size
 
     Returns:
         Tuple of (offset, limit) for SQLAlchemy queries
-    """
-    if _start is None and _end is None:
-        return skip, limit
 
-    start = _start or 0
-    end = _end if _end is not None else start + limit
-    return start, max(0, end - start)
+    Raises:
+        ValueError: If pagination values are invalid
+    """
+    if default_start < 0:
+        raise ValueError("pagination_config.default_start must be >= 0")
+    if default_page_size < 0:
+        raise ValueError("pagination_config.default_page_size must be >= 0")
+    if max_page_size <= 0:
+        raise ValueError("pagination_config.max_page_size must be > 0")
+
+    normalized_default_size = min(default_page_size, max_page_size)
+
+    start = _start if _start is not None else default_start
+    if _end is None:
+        end = start + normalized_default_size
+    else:
+        end = _end
+
+    if start < 0:
+        raise ValueError("`_start` must be greater than or equal to 0.")
+    if end < 0:
+        raise ValueError("`_end` must be greater than or equal to 0.")
+    if end < start:
+        raise ValueError("`_end` must be greater than or equal to `_start`.")
+
+    return start, min(max_page_size, end - start)
