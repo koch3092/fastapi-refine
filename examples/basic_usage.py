@@ -87,7 +87,9 @@ sort_config = SortConfig(
 def read_items(
     session: SessionDep,
     refine_resp: Annotated[RefineResponse, Depends(refine_response())],
-    query: Annotated[RefineQuery, Depends(refine_query(Item, filter_config, sort_config))],
+    query: Annotated[
+        RefineQuery, Depends(refine_query(Item, filter_config, sort_config))
+    ],
 ) -> list[Item]:
     """Get list of items with filtering, sorting, and pagination."""
     # Build query

@@ -18,7 +18,14 @@ __all__ = [
 ]
 
 LEGACY_PAGINATION_QUERY_KEYS = {"skip", "limit"}
-IGNORED_QUERY_KEYS = {"_start", "_end", "_sort", "_order", "id", *LEGACY_PAGINATION_QUERY_KEYS}
+IGNORED_QUERY_KEYS = {
+    "_start",
+    "_end",
+    "_sort",
+    "_order",
+    "id",
+    *LEGACY_PAGINATION_QUERY_KEYS,
+}
 
 
 def parse_bool(value: str) -> bool:

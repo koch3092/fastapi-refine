@@ -85,7 +85,9 @@ class TestPaginationParsing:
         ) == (0, 100)
 
     def test_resolve_pagination_end_before_start_raises(self):
-        with pytest.raises(ValueError, match="`_end` must be greater than or equal to `_start`"):
+        with pytest.raises(
+            ValueError, match="`_end` must be greater than or equal to `_start`"
+        ):
             resolve_pagination(
                 _start=20,
                 _end=10,
@@ -95,7 +97,9 @@ class TestPaginationParsing:
             )
 
     def test_resolve_pagination_negative_start_raises(self):
-        with pytest.raises(ValueError, match="`_start` must be greater than or equal to 0"):
+        with pytest.raises(
+            ValueError, match="`_start` must be greater than or equal to 0"
+        ):
             resolve_pagination(
                 _start=-1,
                 _end=10,
@@ -105,5 +109,7 @@ class TestPaginationParsing:
             )
 
     def test_reject_legacy_skip_limit_parameters(self):
-        with pytest.raises(ValueError, match="Legacy pagination parameters are not supported"):
+        with pytest.raises(
+            ValueError, match="Legacy pagination parameters are not supported"
+        ):
             ensure_no_legacy_pagination_params(QueryParams("skip=0&limit=10"))

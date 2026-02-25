@@ -66,7 +66,9 @@ def test_skip_limit_is_rejected_with_422():
         )
 
     assert exc_info.value.status_code == 422
-    assert "Legacy pagination parameters are not supported" in str(exc_info.value.detail)
+    assert "Legacy pagination parameters are not supported" in str(
+        exc_info.value.detail
+    )
 
 
 def test_invalid_range_is_rejected_with_422():
@@ -83,7 +85,9 @@ def test_invalid_range_is_rejected_with_422():
         )
 
     assert exc_info.value.status_code == 422
-    assert "`_end` must be greater than or equal to `_start`" in str(exc_info.value.detail)
+    assert "`_end` must be greater than or equal to `_start`" in str(
+        exc_info.value.detail
+    )
 
 
 def test_start_end_range_pagination_still_works():
