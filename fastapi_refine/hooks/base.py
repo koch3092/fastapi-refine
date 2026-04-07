@@ -4,55 +4,62 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from sqlalchemy import ColumnElement
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Session
 
 __all__ = ["RefineHooks", "HookContext"]
+
+PrincipalT = TypeVar("PrincipalT")
 
 
 # Hook type aliases
 BeforeQueryHook = Callable[
-    ["HookContext", list[ColumnElement[Any]]],
+    ["HookContext[PrincipalT]", list[ColumnElement[Any]]],
     list[ColumnElement[Any]] | Awaitable[list[ColumnElement[Any]]],
 ]
 
 AfterQueryHook = Callable[
-    ["HookContext", list[Any]],
+    ["HookContext[PrincipalT]", list[Any]],
     list[Any] | Awaitable[list[Any]],
 ]
 
 BeforeMutationHook = Callable[
-    ["HookContext", Any],
+    ["HookContext[PrincipalT]", Any],
     None | Awaitable[None],
 ]
 
 AfterMutationHook = Callable[
-    ["HookContext", Any, Any],
+    ["HookContext[PrincipalT]", Any, Any],
     Any | Awaitable[Any],
+]
+
+AfterDeleteHook = Callable[
+    ["HookContext[PrincipalT]", Any],
+    None | Awaitable[None],
 ]
 
 
 @dataclass
-class HookContext:
+class HookContext(Generic[PrincipalT]):
     """Context passed to hooks during execution.
 
     Attributes:
         model: The SQLModel class being operated on
         session: Database session
-        current_user: Currently authenticated user (if available)
+        current_principal: Currently authenticated principal (if available)
         request: Current FastAPI request (if available)
     """
 
     model: type[SQLModel]
-    session: Any
-    current_user: Any | None = None
+    session: Session
+    current_principal: PrincipalT | None = None
     request: Any | None = None
 
 
 @dataclass
-class RefineHooks:
+class RefineHooks(Generic[PrincipalT]):
     """Collection of lifecycle hooks for CRUD operations.
 
     All hooks are optional. Define only the ones you need.
@@ -68,11 +75,11 @@ class RefineHooks:
         after_delete: Called after deleting a record
     """
 
-    before_query: BeforeQueryHook | None = None
-    after_query: AfterQueryHook | None = None
-    before_create: BeforeMutationHook | None = None
-    after_create: AfterMutationHook | None = None
-    before_update: BeforeMutationHook | None = None
-    after_update: AfterMutationHook | None = None
-    before_delete: BeforeMutationHook | None = None
-    after_delete: AfterMutationHook | None = None
+    before_query: BeforeQueryHook[PrincipalT] | None = None
+    after_query: AfterQueryHook[PrincipalT] | None = None
+    before_create: BeforeMutationHook[PrincipalT] | None = None
+    after_create: AfterMutationHook[PrincipalT] | None = None
+    before_update: BeforeMutationHook[PrincipalT] | None = None
+    after_update: AfterMutationHook[PrincipalT] | None = None
+    before_delete: BeforeMutationHook[PrincipalT] | None = None
+    after_delete: AfterDeleteHook[PrincipalT] | None = None

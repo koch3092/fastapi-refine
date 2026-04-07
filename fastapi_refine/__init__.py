@@ -2,7 +2,13 @@
 
 __version__ = "0.2.0"
 
-from fastapi_refine.core import FilterConfig, FilterField, PaginationConfig, SortConfig
+from fastapi_refine.core import (
+    DependencyCallable,
+    FilterConfig,
+    FilterField,
+    PaginationConfig,
+    SortConfig,
+)
 from fastapi_refine.dependencies import (
     RefineQuery,
     RefineResponse,
@@ -13,6 +19,7 @@ from fastapi_refine.hooks import HookContext, RefineHooks
 from fastapi_refine.routers import RefineCRUDRouter
 
 __all__ = [
+    "DependencyCallable",
     "FilterConfig",
     "FilterField",
     "SortConfig",

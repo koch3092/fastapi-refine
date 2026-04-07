@@ -2,13 +2,39 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol, TypeVar
 
 from sqlalchemy import ColumnElement
 
-__all__ = ["FilterField", "FilterConfig", "SortConfig", "PaginationConfig"]
+__all__ = [
+    "DependencyCallable",
+    "FilterField",
+    "FilterConfig",
+    "SortConfig",
+    "PaginationConfig",
+]
+
+T_co = TypeVar("T_co", covariant=True)
+
+
+class DependencyCallable(Protocol[T_co]):
+    """A FastAPI-compatible dependency callable.
+
+    Supports standard return-value dependencies as well as sync/async yield-based
+    dependencies used by FastAPI.
+    """
+
+    def __call__(
+        self, *args: Any, **kwargs: Any
+    ) -> (
+        T_co
+        | Awaitable[T_co]
+        | Generator[T_co, None, None]
+        | AsyncGenerator[T_co, None]
+    ):
+        ...
 
 
 @dataclass(frozen=True)

@@ -12,7 +12,7 @@ from fastapi_refine.hooks.base import HookContext, RefineHooks
 __all__ = ["OwnerBasedHooks"]
 
 
-class OwnerBasedHooks(RefineHooks):
+class OwnerBasedHooks(RefineHooks[Any]):
     """Hooks for owner-based permission control.
 
     Ensures users can only access records they own, unless they are superusers.
@@ -47,19 +47,19 @@ class OwnerBasedHooks(RefineHooks):
 
     def _before_query(
         self,
-        context: HookContext,
+        context: HookContext[Any],
         conditions: list[ColumnElement[Any]],
     ) -> list[ColumnElement[Any]]:
         """Add owner filter to query conditions."""
-        if not context.current_user:
+        if not context.current_principal:
             return conditions
 
         if self.allow_superuser and getattr(
-            context.current_user, "is_superuser", False
+            context.current_principal, "is_superuser", False
         ):
             return conditions
 
-        user_id = getattr(context.current_user, "id", None)
+        user_id = getattr(context.current_principal, "id", None)
         if not user_id:
             return conditions
 
@@ -70,20 +70,20 @@ class OwnerBasedHooks(RefineHooks):
 
         return conditions
 
-    def _before_mutation(self, context: HookContext, item: Any) -> None:
+    def _before_mutation(self, context: HookContext[Any], item: Any) -> None:
         """Check if user has permission to modify/delete this item."""
-        if not context.current_user:
+        if not context.current_principal:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required",
             )
 
         if self.allow_superuser and getattr(
-            context.current_user, "is_superuser", False
+            context.current_principal, "is_superuser", False
         ):
             return
 
-        user_id = getattr(context.current_user, "id", None)
+        user_id = getattr(context.current_principal, "id", None)
         owner_id = getattr(item, self.owner_field, None)
 
         if owner_id != user_id:

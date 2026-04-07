@@ -146,13 +146,13 @@ from fastapi_refine import RefineHooks, HookContext, RefineCRUDRouter
 
 def before_query(context: HookContext, conditions: list) -> list:
     """Filter items to only show user's own items"""
-    if context.current_user:
-        conditions.append(context.model.owner_id == context.current_user.id)
+    if context.current_principal:
+        conditions.append(context.model.owner_id == context.current_principal.id)
     return conditions
 
 def before_delete(context: HookContext, item) -> None:
     """Only allow deleting own items"""
-    if item.owner_id != context.current_user.id:
+    if item.owner_id != context.current_principal.id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
 hooks = RefineHooks(
@@ -163,7 +163,7 @@ hooks = RefineHooks(
 crud_router = RefineCRUDRouter(
     model=Item,
     hooks=hooks,
-    current_user_dep=get_current_user,
+    current_principal_dep=get_current_user,
     # ... other config
 )
 ```

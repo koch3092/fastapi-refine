@@ -8,6 +8,7 @@ from fastapi_refine.core.query import (
     resolve_pagination,
 )
 from fastapi_refine.core.types import (
+    DependencyCallable,
     FilterConfig,
     FilterField,
     PaginationConfig,
@@ -15,6 +16,7 @@ from fastapi_refine.core.types import (
 )
 
 __all__ = [
+    "DependencyCallable",
     "FilterConfig",
     "FilterField",
     "SortConfig",
