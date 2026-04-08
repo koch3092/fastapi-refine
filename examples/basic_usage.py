@@ -12,6 +12,7 @@ from fastapi_refine import (
     RefineQuery,
     RefineResponse,
     SortConfig,
+    configure_refine,
     refine_query,
     refine_response,
 )
@@ -61,6 +62,8 @@ async def lifespan(_: FastAPI):
 
 # FastAPI app
 app = FastAPI(title="fastapi-refine Example", lifespan=lifespan)
+# Register app-level numeric status handlers before configure_refine(app).
+configure_refine(app)
 
 
 # Configure filters and sorting

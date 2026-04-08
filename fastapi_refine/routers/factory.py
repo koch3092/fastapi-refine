@@ -6,7 +6,7 @@ import inspect
 from contextlib import contextmanager
 from typing import Any, Generic, TypeVar, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlmodel import Session, SQLModel, select
 
 from fastapi_refine.core import (
@@ -16,6 +16,7 @@ from fastapi_refine.core import (
     SortConfig,
 )
 from fastapi_refine.dependencies import RefineQuery, RefineResponse
+from fastapi_refine.errors import RefineHTTPException
 from fastapi_refine.hooks import HookContext, RefineHooks
 
 __all__ = ["RefineCRUDRouter"]
@@ -369,9 +370,9 @@ class RefineCRUDRouter(
         with self._direct_principal_scope(current_principal):
             item = session.get(self.model, id)
             if not item:
-                raise HTTPException(
+                raise RefineHTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{self.model.__name__} not found",
+                    message=f"{self.model.__name__} not found",
                 )
             return item
 
@@ -420,9 +421,9 @@ class RefineCRUDRouter(
         with self._direct_principal_scope(current_principal) as resolved_principal:
             item = session.get(self.model, id)
             if not item:
-                raise HTTPException(
+                raise RefineHTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{self.model.__name__} not found",
+                    message=f"{self.model.__name__} not found",
                 )
 
             # Execute before_update hook
@@ -462,9 +463,9 @@ class RefineCRUDRouter(
         with self._direct_principal_scope(current_principal) as resolved_principal:
             item = session.get(self.model, id)
             if not item:
-                raise HTTPException(
+                raise RefineHTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{self.model.__name__} not found",
+                    message=f"{self.model.__name__} not found",
                 )
 
             # Execute before_delete hook

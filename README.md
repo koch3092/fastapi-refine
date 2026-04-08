@@ -98,12 +98,20 @@ Generate all CRUD endpoints automatically:
 
 ```python
 from fastapi import FastAPI
-from fastapi_refine import RefineCRUDRouter, FilterConfig, FilterField, SortConfig
+from fastapi_refine import (
+    RefineCRUDRouter,
+    FilterConfig,
+    FilterField,
+    SortConfig,
+    configure_refine,
+)
 from fastapi_refine.core import parse_bool
 from .models import Item, ItemCreate, ItemUpdate, ItemPublic
 from .database import get_session
 
 app = FastAPI()
+# Register any numeric status handlers before calling configure_refine(app).
+configure_refine(app)
 
 # Create router with full CRUD operations
 crud_router = RefineCRUDRouter(
@@ -142,7 +150,12 @@ This automatically creates:
 
 ```python
 from fastapi import Depends, HTTPException
-from fastapi_refine import RefineHooks, HookContext, RefineCRUDRouter
+from fastapi_refine import (
+    RefineHooks,
+    HookContext,
+    RefineCRUDRouter,
+    configure_refine,
+)
 
 def before_query(context: HookContext, conditions: list) -> list:
     """Filter items to only show user's own items"""
@@ -166,6 +179,90 @@ crud_router = RefineCRUDRouter(
     current_principal_dep=get_current_user,
     # ... other config
 )
+```
+
+### Error Formatting
+
+Install the app-level Refine integration to normalize FastAPI and package errors into
+Refine-friendly JSON responses:
+
+```python
+from fastapi import FastAPI
+from fastapi_refine import configure_refine
+
+app = FastAPI()
+# Register numeric status handlers such as 404/409/422 before configure_refine(app).
+configure_refine(app)
+```
+
+`configure_refine(app)` is a convenience helper with installation-time snapshot
+semantics:
+
+- It ensures `RefineHTTPException` has a dedicated handler, preserving any existing
+  app-registered `RefineHTTPException` handler.
+- It wraps numeric status handlers that already exist when called, so
+  `RefineHTTPException(status_code=...)` still uses the active
+  `RefineHTTPException` handler for those statuses.
+- It installs `StarletteHTTPException` and `RequestValidationError` handlers only when
+  those slots are still using FastAPI's defaults.
+- If the middleware stack was already built, it rebuilds the current stack so the new
+  handlers take effect immediately.
+- It does not track numeric status handlers added later.
+
+Package-generated router/query/hook errors are raised as `RefineHTTPException` and are
+handled by fastapi-refine before generic `HTTPException` or
+`StarletteHTTPException` handlers. This keeps the Refine wire shape stable, but it also
+means your existing generic HTTP exception handlers will not see those package-generated
+errors.
+
+When installed, the normalized response envelope uses:
+
+- `message`
+- `statusCode`
+- `code`
+- optional `errors`
+- optional top-level `detail` when the original `HTTPException.detail` was any
+  non-string structured value
+
+For `RefineHTTPException`, `message` stays the primary Refine-facing summary. If you
+pass a more specific `detail_message`, it is preserved as top-level `detail` when the
+handler formats the response.
+
+Top-level `errors` are produced only for package-generated `RefineHTTPException`
+values and `RequestValidationError`. Custom structured `HTTPException.detail`
+payloads are preserved under `detail` rather than being auto-promoted to `errors`.
+
+If your app needs logging, trace IDs, or extra headers on package-generated Refine
+errors, register a `RefineHTTPException` handler explicitly and delegate to the public
+handler. `configure_refine(app)` preserves that handler and numeric status wrappers
+continue to dispatch through it:
+
+```python
+from fastapi_refine import RefineHTTPException, refine_http_exception_handler
+from starlette.requests import Request
+
+@app.exception_handler(RefineHTTPException)
+async def app_refine_exception_handler(request: Request, exc: RefineHTTPException):
+    response = await refine_http_exception_handler(request, exc)
+    response.headers["x-trace-id"] = request.headers.get("x-trace-id", "missing")
+    return response
+```
+
+If you want full explicit control instead of `configure_refine(app)`, register the
+public handlers yourself:
+
+```python
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi_refine import (
+    RefineHTTPException,
+    refine_http_exception_handler,
+    refine_validation_exception_handler,
+)
+
+app.add_exception_handler(RefineHTTPException, refine_http_exception_handler)
+app.add_exception_handler(StarletteHTTPException, refine_http_exception_handler)
+app.add_exception_handler(RequestValidationError, refine_validation_exception_handler)
 ```
 
 ### Pagination Configuration

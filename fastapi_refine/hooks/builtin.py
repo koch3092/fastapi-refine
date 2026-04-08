@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import HTTPException, status
+from fastapi import status
 from sqlalchemy import ColumnElement
 
+from fastapi_refine.errors import RefineHTTPException
 from fastapi_refine.hooks.base import HookContext, RefineHooks
 
 __all__ = ["OwnerBasedHooks"]
@@ -73,9 +74,9 @@ class OwnerBasedHooks(RefineHooks[Any]):
     def _before_mutation(self, context: HookContext[Any], item: Any) -> None:
         """Check if user has permission to modify/delete this item."""
         if not context.current_principal:
-            raise HTTPException(
+            raise RefineHTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required",
+                message="Authentication required",
             )
 
         if self.allow_superuser and getattr(
@@ -87,7 +88,7 @@ class OwnerBasedHooks(RefineHooks[Any]):
         owner_id = getattr(item, self.owner_field, None)
 
         if owner_id != user_id:
-            raise HTTPException(
+            raise RefineHTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not enough permissions",
+                message="Not enough permissions",
             )

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import HTTPException, Query, Request, status
+from fastapi import Query, Request, status
 from sqlalchemy import ColumnElement
 from sqlmodel import SQLModel
 
@@ -15,6 +15,7 @@ from fastapi_refine.core.query import (
     parse_sorters,
     resolve_pagination,
 )
+from fastapi_refine.errors import RefineHTTPException
 
 __all__ = ["RefineQuery", "refine_query"]
 
@@ -56,9 +57,11 @@ class RefineQuery:
             try:
                 ensure_no_legacy_pagination_params(request.query_params)
             except ValueError as exc:
-                raise HTTPException(
+                raise RefineHTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail=str(exc),
+                    message="Validation failed",
+                    detail_message=str(exc),
+                    errors={"_root": [str(exc)]},
                 ) from exc
 
             self.conditions = parse_filters(
@@ -82,9 +85,11 @@ class RefineQuery:
                 max_page_size=self.pagination_config.max_page_size,
             )
         except ValueError as exc:
-            raise HTTPException(
+            raise RefineHTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=str(exc),
+                message="Validation failed",
+                detail_message=str(exc),
+                errors={"_root": [str(exc)]},
             ) from exc
 
     def get_count(

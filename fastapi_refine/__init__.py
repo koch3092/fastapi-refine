@@ -15,10 +15,24 @@ from fastapi_refine.dependencies import (
     refine_query,
     refine_response,
 )
+from fastapi_refine.errors import (
+    configure_refine,
+    format_refine_http_exception,
+    format_refine_validation_error,
+    RefineHTTPException,
+    refine_http_exception_handler,
+    refine_validation_exception_handler,
+)
 from fastapi_refine.hooks import HookContext, RefineHooks
 from fastapi_refine.routers import RefineCRUDRouter
 
 __all__ = [
+    "configure_refine",
+    "RefineHTTPException",
+    "format_refine_http_exception",
+    "format_refine_validation_error",
+    "refine_http_exception_handler",
+    "refine_validation_exception_handler",
     "DependencyCallable",
     "FilterConfig",
     "FilterField",
