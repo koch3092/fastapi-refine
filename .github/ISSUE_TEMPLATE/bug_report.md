@@ -28,7 +28,7 @@ What actually happened.
 
 ## Environment
 - Python version: [e.g., 3.11]
-- fastapi-refine version: [e.g., 0.1.0]
+- fastapi-refine version: [e.g., 0.3.0]
 - FastAPI version: [e.g., 0.114.2]
 - SQLModel version: [e.g., 0.0.21]
 - OS: [e.g., Ubuntu 22.04]

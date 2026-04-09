@@ -39,6 +39,32 @@ mypy .
 pytest
 ```
 
+## Release Preflight
+
+Before cutting a release, run the same checks locally that CI and the publish workflow
+expect:
+
+```bash
+# Sync development dependencies
+uv pip install -e ".[dev]"
+
+# Static and contract checks
+ruff check .
+ruff format --check .
+mypy .
+pytest
+
+# Build distributable artifacts and validate metadata
+python -m build --sdist --wheel
+twine check dist/*
+```
+
+If you are preparing a tagged release, also verify that:
+
+- `pyproject.toml` and `fastapi_refine/__init__.py` have the same version.
+- `CHANGELOG.md` contains the release notes for that version.
+- README examples match the current public API and wire contract.
+
 ## Development Workflow
 
 1. Create a new branch for your feature or fix:
@@ -63,7 +89,7 @@ git push origin feature/your-feature-name
 - Update documentation as needed
 - Follow the existing code style
 - Write clear commit messages
-- Update CHANGELOG.md with your changes
+- Update `CHANGELOG.md` with your changes when they affect released behavior
 
 ## Code Style
 

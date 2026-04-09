@@ -153,6 +153,7 @@ class RefineCRUDRouter(
                     session=session,
                     current_principal=current_principal,
                 )
+
             create_endpoint_with_principal = self._bind_body_model(
                 create_endpoint_with_principal, "item_in", self.create_schema
             )
@@ -180,6 +181,7 @@ class RefineCRUDRouter(
                     session=session,
                     current_principal=current_principal,
                 )
+
             update_endpoint_with_principal = self._bind_body_model(
                 update_endpoint_with_principal, "item_in", self.update_schema
             )
@@ -228,6 +230,7 @@ class RefineCRUDRouter(
                 session: Session = Depends(self.session_dep),
             ) -> Any:
                 return self.create(item_in=item_in, session=session)
+
             create_endpoint_without_principal = self._bind_body_model(
                 create_endpoint_without_principal, "item_in", self.create_schema
             )
@@ -244,6 +247,7 @@ class RefineCRUDRouter(
                 session: Session = Depends(self.session_dep),
             ) -> Any:
                 return self.update(id=id, item_in=item_in, session=session)
+
             update_endpoint_without_principal = self._bind_body_model(
                 update_endpoint_without_principal, "item_in", self.update_schema
             )
@@ -330,7 +334,9 @@ class RefineCRUDRouter(
                     current_principal=resolved_principal,
                     request=request,
                 )
-                conditions = self._run_hook(self.hooks.before_query, context, conditions)
+                conditions = self._run_hook(
+                    self.hooks.before_query, context, conditions
+                )
 
             # Get count
             count = query.get_count(session, conditions)

@@ -1,6 +1,6 @@
 """fastapi-refine: FastAPI integration for Refine simple-rest data provider."""
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from fastapi_refine.core import (
     DependencyCallable,
@@ -16,10 +16,10 @@ from fastapi_refine.dependencies import (
     refine_response,
 )
 from fastapi_refine.errors import (
+    RefineHTTPException,
     configure_refine,
     format_refine_http_exception,
     format_refine_validation_error,
-    RefineHTTPException,
     refine_http_exception_handler,
     refine_validation_exception_handler,
 )

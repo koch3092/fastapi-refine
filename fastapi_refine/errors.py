@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from http import HTTPStatus
-import logging
 from typing import Any, cast
 
 from fastapi import FastAPI
@@ -21,9 +21,9 @@ from fastapi.responses import JSONResponse
 from fastapi.utils import is_body_allowed_for_status_code
 from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
-from starlette.responses import Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
+from starlette.responses import Response
 
 __all__ = [
     "RefineHTTPException",
@@ -173,9 +173,7 @@ def format_refine_validation_error(exc: RequestValidationError) -> dict[str, Any
     )
 
 
-async def refine_http_exception_handler(
-    _request: Request, exc: Exception
-) -> Response:
+async def refine_http_exception_handler(_request: Request, exc: Exception) -> Response:
     http_exc = cast(StarletteHTTPException, exc)
     if not is_body_allowed_for_status_code(http_exc.status_code):
         return Response(
@@ -227,7 +225,9 @@ def _handler_name(handler: Any) -> str:
 
 
 def _resolve_refine_exception_handler(app: FastAPI) -> Any:
-    return app.exception_handlers.get(RefineHTTPException, refine_http_exception_handler)
+    return app.exception_handlers.get(
+        RefineHTTPException, refine_http_exception_handler
+    )
 
 
 async def _call_exception_handler(
@@ -283,8 +283,9 @@ def _wrap_status_handler_for_refine_errors(
 
         return await _call_exception_handler(handler, request, exc)
 
-    setattr(wrapped_handler, "__fastapi_refine_status_wrapper__", True)
-    return wrapped_handler
+    wrapped_handler_any = cast(Any, wrapped_handler)
+    wrapped_handler_any.__fastapi_refine_status_wrapper__ = True
+    return wrapped_handler_any
 
 
 def _rebuild_middleware_stack_if_needed(app: FastAPI) -> None:
@@ -320,9 +321,7 @@ def configure_refine(app: FastAPI) -> FastAPI:
         )
 
     if not _has_custom_starlette_http_exception_handler(app):
-        app.add_exception_handler(
-            StarletteHTTPException, refine_http_exception_handler
-        )
+        app.add_exception_handler(StarletteHTTPException, refine_http_exception_handler)
 
     if not _has_custom_validation_exception_handler(app):
         app.add_exception_handler(

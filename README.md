@@ -14,6 +14,7 @@ FastAPI integration for [Refine](https://refine.dev/) simple-rest data provider.
 - **CRUD Router Factory**: Generate complete CRUD endpoints with one class
 - **Flexible Filtering**: Support for `eq`, `ne`, `gte`, `lte`, `like` operators and full-text search
 - **Hook System**: Inject custom logic before/after operations (permissions, validation, etc.)
+- **Refine Error Integration**: Optional app-level error normalization via `configure_refine(app)`
 - **Production Ready**: Built with FastAPI best practices
 
 ## Installation
@@ -21,6 +22,18 @@ FastAPI integration for [Refine](https://refine.dev/) simple-rest data provider.
 ```bash
 pip install fastapi-refine
 ```
+
+## Upgrade Notes for 0.3.0
+
+If you are upgrading from `0.2.x`, these are the user-visible changes to account for:
+
+- `RefineCRUDRouter(..., current_user_dep=...)` is now
+  `RefineCRUDRouter(..., current_principal_dep=...)`.
+- `HookContext.current_user` is now `HookContext.current_principal`.
+- `DELETE` success returns the deleted public record snapshot, matching Refine's
+  expected mutation response contract.
+- Unified Refine error envelopes are opt-in via `configure_refine(app)`.
+- Legacy `skip`/`limit` query parameters still return `422` in `0.3.x`.
 
 ## Quick Start
 
@@ -154,7 +167,6 @@ from fastapi_refine import (
     RefineHooks,
     HookContext,
     RefineCRUDRouter,
-    configure_refine,
 )
 
 def before_query(context: HookContext, conditions: list) -> list:
@@ -300,7 +312,7 @@ The library parses Refine simple-rest query parameters:
 
 ### Pagination
 - Range-based: `_start=0&_end=20`
-- Legacy `skip`/`limit` is rejected with `422` in `0.2.x` (planned to be silently ignored after `0.5.x`).
+- Legacy `skip`/`limit` is currently rejected with `422` (planned to be silently ignored after `0.5.x`).
 
 ### Example Query
 ```

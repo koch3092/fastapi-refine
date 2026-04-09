@@ -14,9 +14,9 @@ import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlmodel import Field, Session, SQLModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
-from sqlmodel import Field, Session, SQLModel
 
 from fastapi_refine import (
     FilterConfig,
@@ -133,7 +133,9 @@ def run_app(
 
     asyncio.run(app(scope, receive, send))
 
-    start = next(message for message in messages if message["type"] == "http.response.start")
+    start = next(
+        message for message in messages if message["type"] == "http.response.start"
+    )
     body = b"".join(
         message.get("body", b"")
         for message in messages
@@ -230,7 +232,9 @@ def test_owner_hooks_errors_are_formatted_as_refine_errors():
             HookContext(
                 model=Item,
                 session=Session(),
-                current_principal=type("Principal", (), {"id": 9, "is_superuser": False})(),
+                current_principal=type(
+                    "Principal", (), {"id": 9, "is_superuser": False}
+                )(),
             ),
             item,
         )
@@ -256,7 +260,9 @@ def test_query_validation_is_formatted_with_root_errors():
             request=make_request("/items", "_start=2&_end=1"),
         )
 
-    body = run_handler(handler, make_request("/items", "_start=2&_end=1"), exc_info.value)
+    body = run_handler(
+        handler, make_request("/items", "_start=2&_end=1"), exc_info.value
+    )
 
     assert body["message"] == "Validation failed"
     assert body["statusCode"] == 422
@@ -550,7 +556,9 @@ def test_configure_refine_does_not_override_custom_fastapi_http_handler():
     configure_refine(app)
 
     assert app.exception_handlers[HTTPException] is custom_handler
-    assert app.exception_handlers[StarletteHTTPException] is refine_http_exception_handler
+    assert (
+        app.exception_handlers[StarletteHTTPException] is refine_http_exception_handler
+    )
 
 
 def test_configure_refine_does_not_override_custom_validation_handler():
@@ -572,9 +580,7 @@ def test_configure_refine_preserves_existing_refine_http_exception_handler(
 ):
     app = FastAPI()
 
-    async def custom_refine_handler(
-        _request: Request, exc: Exception
-    ) -> JSONResponse:
+    async def custom_refine_handler(_request: Request, exc: Exception) -> JSONResponse:
         http_exc = exc
         status_code = getattr(http_exc, "status_code", 500)
         return JSONResponse(
@@ -644,9 +650,7 @@ def test_configure_refine_wraps_custom_status_handler_for_refine_http_exception(
 def test_status_handler_wrapper_uses_registered_refine_http_exception_handler():
     app = FastAPI()
 
-    async def custom_refine_handler(
-        _request: Request, exc: Exception
-    ) -> JSONResponse:
+    async def custom_refine_handler(_request: Request, exc: Exception) -> JSONResponse:
         http_exc = exc
         status_code = getattr(http_exc, "status_code", 500)
         return JSONResponse(
@@ -814,9 +818,7 @@ def test_refine_http_exception_handler_uses_empty_body_for_no_content_statuses(
 def test_custom_fastapi_http_handler_coexists_with_starlette_refine_handler():
     app = FastAPI()
 
-    async def custom_fastapi_handler(
-        _request: Request, exc: Exception
-    ) -> JSONResponse:
+    async def custom_fastapi_handler(_request: Request, exc: Exception) -> JSONResponse:
         http_exc = exc
         status_code = getattr(http_exc, "status_code", 500)
         return JSONResponse(

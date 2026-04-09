@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Generic, TypeVar
 
 from sqlalchemy import ColumnElement
-from sqlmodel import SQLModel, Session
+from sqlmodel import Session, SQLModel
 
 __all__ = ["RefineHooks", "HookContext"]
 

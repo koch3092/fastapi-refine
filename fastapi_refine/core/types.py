@@ -33,8 +33,7 @@ class DependencyCallable(Protocol[T_co]):
         | Awaitable[T_co]
         | Generator[T_co, None, None]
         | AsyncGenerator[T_co, None]
-    ):
-        ...
+    ): ...
 
 
 @dataclass(frozen=True)

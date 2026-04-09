@@ -14,6 +14,9 @@ pip install fastapi-refine uvicorn
 python examples/basic_usage.py
 ```
 
+The example already installs `configure_refine(app)`, so package-generated CRUD and
+validation errors use the Refine-friendly envelope described in the main README.
+
 Then visit:
 - API docs: http://localhost:8000/docs
 - Example queries:
@@ -22,7 +25,7 @@ Then visit:
   - Filter active items: http://localhost:8000/items?is_active=true
   - Sort by price: http://localhost:8000/items?_sort=price&_order=desc
   - Pagination: http://localhost:8000/items?_start=0&_end=10
-  - Legacy params (`skip`/`limit`) return 422 in 0.2.x
+  - Legacy params (`skip`/`limit`) currently return 422
   - Search: http://localhost:8000/items?q=search+term
 
 ## Testing with Refine

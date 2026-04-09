@@ -13,8 +13,8 @@ from sqlmodel import Field, Session, SQLModel, create_engine
 from fastapi_refine import (
     FilterConfig,
     FilterField,
-    RefineHooks,
     RefineCRUDRouter,
+    RefineHooks,
     SortConfig,
 )
 from fastapi_refine.hooks import OwnerBasedHooks
@@ -78,7 +78,11 @@ OWNED_FILTER_CONFIG = FilterConfig(
     }
 )
 OWNED_SORT_CONFIG = SortConfig(
-    fields={"id": OwnedItem.id, "title": OwnedItem.title, "owner_id": OwnedItem.owner_id}
+    fields={
+        "id": OwnedItem.id,
+        "title": OwnedItem.title,
+        "owner_id": OwnedItem.owner_id,
+    }
 )
 
 
