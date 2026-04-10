@@ -25,6 +25,16 @@ AfterQueryHook = Callable[
     list[Any] | Awaitable[list[Any]],
 ]
 
+BeforeCreateHook = Callable[
+    ["HookContext[PrincipalT]", Any],
+    dict[str, Any] | None | Awaitable[dict[str, Any] | None],
+]
+
+BeforeUpdateHook = Callable[
+    ["HookContext[PrincipalT]", Any, Any],
+    dict[str, Any] | None | Awaitable[dict[str, Any] | None],
+]
+
 BeforeMutationHook = Callable[
     ["HookContext[PrincipalT]", Any],
     None | Awaitable[None],
@@ -67,9 +77,11 @@ class RefineHooks(Generic[PrincipalT]):
     Attributes:
         before_query: Called before query execution, can modify conditions
         after_query: Called after query execution, can modify results
-        before_create: Called before creating a record, can raise for permission check
+        before_create: Called before creating a record, can raise for permission
+            check and optionally return extra fields for model validation
         after_create: Called after creating a record, can modify the result
-        before_update: Called before updating a record, can raise for permission check
+        before_update: Called before updating a record, can raise for permission
+            check and optionally return extra fields for the update payload
         after_update: Called after updating a record, can modify the result
         before_delete: Called before deleting a record, can raise for permission check
         after_delete: Called after deleting a record
@@ -77,9 +89,9 @@ class RefineHooks(Generic[PrincipalT]):
 
     before_query: BeforeQueryHook[PrincipalT] | None = None
     after_query: AfterQueryHook[PrincipalT] | None = None
-    before_create: BeforeMutationHook[PrincipalT] | None = None
+    before_create: BeforeCreateHook[PrincipalT] | None = None
     after_create: AfterMutationHook[PrincipalT] | None = None
-    before_update: BeforeMutationHook[PrincipalT] | None = None
+    before_update: BeforeUpdateHook[PrincipalT] | None = None
     after_update: AfterMutationHook[PrincipalT] | None = None
     before_delete: BeforeMutationHook[PrincipalT] | None = None
     after_delete: AfterDeleteHook[PrincipalT] | None = None

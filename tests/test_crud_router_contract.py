@@ -53,8 +53,17 @@ class OwnedItemCreate(SQLModel):
     owner_id: int
 
 
+class OwnedItemCreateNoOwner(SQLModel):
+    title: str
+
+
 class OwnedItemUpdate(SQLModel):
     title: str | None = None
+
+
+class OwnedItemUpdateWithOwner(SQLModel):
+    title: str | None = None
+    owner_id: int | None = None
 
 
 class OwnedItemPublic(SQLModel):
@@ -121,19 +130,23 @@ def make_router() -> RefineCRUDRouter[
 
 def make_owned_router(
     current_principal_dep: Any,
+    *,
+    create_schema: type[SQLModel] = OwnedItemCreate,
+    update_schema: type[SQLModel] = OwnedItemUpdate,
+    hooks: Any | None = None,
 ) -> RefineCRUDRouter[
-    OwnedItem, OwnedItemCreate, OwnedItemUpdate, OwnedItemPublic, SimpleNamespace
+    OwnedItem, SQLModel, OwnedItemUpdate, OwnedItemPublic, SimpleNamespace
 ]:
     return RefineCRUDRouter(
         model=OwnedItem,
         prefix="/owned-items",
-        create_schema=OwnedItemCreate,
-        update_schema=OwnedItemUpdate,
+        create_schema=create_schema,
+        update_schema=update_schema,
         public_schema=OwnedItemPublic,
         session_dep=lambda: None,
         filter_config=OWNED_FILTER_CONFIG,
         sort_config=OWNED_SORT_CONFIG,
-        hooks=OwnerBasedHooks(owner_field="owner_id"),
+        hooks=hooks or OwnerBasedHooks(owner_field="owner_id"),
         current_principal_dep=current_principal_dep,
     )
 
@@ -231,6 +244,90 @@ def test_delete_direct_call_resolves_current_principal_dependency():
 
     assert deleted == OwnedItemPublic(id=item.id, title="owned", owner_id=7)
     assert session.get(OwnedItem, item.id) is None
+
+
+def test_create_before_create_hook_can_inject_extra_fields():
+    session = make_session()
+
+    def before_create(context: Any, item_in: Any) -> dict[str, int]:
+        assert context.current_principal is not None
+        return {"owner_id": context.current_principal.id}
+
+    router = make_owned_router(
+        get_authenticated_principal,
+        create_schema=OwnedItemCreateNoOwner,
+        hooks=RefineHooks(before_create=before_create),
+    )
+
+    created = router.create(item_in=OwnedItemCreateNoOwner(title="owned"), session=session)
+
+    assert created.title == "owned"
+    assert created.owner_id == 7
+
+
+def test_owner_based_hooks_inject_owner_on_create():
+    session = make_session()
+    router = make_owned_router(
+        get_authenticated_principal,
+        create_schema=OwnedItemCreateNoOwner,
+    )
+
+    created = router.create(item_in=OwnedItemCreateNoOwner(title="owned"), session=session)
+
+    assert created.title == "owned"
+    assert created.owner_id == 7
+
+
+def test_before_update_hook_can_override_update_fields():
+    session = make_session()
+    item = OwnedItem(title="before", owner_id=7)
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+
+    def before_update(
+        context: Any, existing_item: Any, item_in: Any
+    ) -> dict[str, int]:
+        assert context.current_principal is not None
+        assert existing_item.id == item.id
+        assert item_in.title == "after"
+        return {"owner_id": context.current_principal.id}
+
+    router = make_owned_router(
+        get_authenticated_principal,
+        hooks=RefineHooks(before_update=before_update),
+    )
+
+    updated = router.update(
+        id=item.id,
+        item_in=OwnedItemUpdate(title="after"),
+        session=session,
+    )
+
+    assert updated.title == "after"
+    assert updated.owner_id == 7
+
+
+def test_owner_based_hooks_update_keeps_owner_and_accepts_new_signature():
+    session = make_session()
+    item = OwnedItem(title="before", owner_id=7)
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+
+    router = make_owned_router(
+        get_authenticated_principal,
+        update_schema=OwnedItemUpdateWithOwner,
+    )
+
+    updated = router.update(
+        id=item.id,
+        item_in=OwnedItemUpdateWithOwner(title="after", owner_id=999),
+        session=session,
+    )
+
+    assert updated.title == "after"
+    assert updated.owner_id == 7
 
 
 def test_delete_direct_call_keeps_yield_principal_dependency_alive_for_hooks():

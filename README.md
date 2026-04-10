@@ -180,8 +180,22 @@ def before_delete(context: HookContext, item) -> None:
     if item.owner_id != context.current_principal.id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
+def before_create(context: HookContext, item_in) -> dict | None:
+    """Inject server-side fields during create"""
+    if context.current_principal:
+        return {"owner_id": context.current_principal.id}
+    return None
+
+def before_update(context: HookContext, item, item_in) -> dict | None:
+    """Override server-controlled fields during update"""
+    if context.current_principal:
+        return {"owner_id": context.current_principal.id}
+    return None
+
 hooks = RefineHooks(
     before_query=before_query,
+    before_create=before_create,
+    before_update=before_update,
     before_delete=before_delete,
 )
 

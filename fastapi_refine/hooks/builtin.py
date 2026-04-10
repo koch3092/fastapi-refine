@@ -42,7 +42,8 @@ class OwnerBasedHooks(RefineHooks[Any]):
         self.allow_superuser = allow_superuser
         super().__init__(
             before_query=self._before_query,
-            before_update=self._before_mutation,
+            before_create=self._before_create,
+            before_update=self._before_update,
             before_delete=self._before_mutation,
         )
 
@@ -70,6 +71,32 @@ class OwnerBasedHooks(RefineHooks[Any]):
         conditions.append(owner_column == user_id)
 
         return conditions
+
+    def _resolve_owner_fields(
+        self, context: HookContext[Any]
+    ) -> dict[str, Any] | None:
+        """Return extra fields that bind the record to the current principal."""
+        if not context.current_principal:
+            return None
+
+        user_id = getattr(context.current_principal, "id", None)
+        if user_id is None:
+            return None
+
+        return {self.owner_field: user_id}
+
+    def _before_create(
+        self, context: HookContext[Any], item_in: Any
+    ) -> dict[str, Any] | None:
+        """Inject the current principal as the record owner on create."""
+        return self._resolve_owner_fields(context)
+
+    def _before_update(
+        self, context: HookContext[Any], item: Any, item_in: Any
+    ) -> dict[str, Any] | None:
+        """Check ownership and keep the record bound to the current principal."""
+        self._before_mutation(context, item)
+        return self._resolve_owner_fields(context)
 
     def _before_mutation(self, context: HookContext[Any], item: Any) -> None:
         """Check if user has permission to modify/delete this item."""

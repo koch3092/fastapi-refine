@@ -390,6 +390,7 @@ class RefineCRUDRouter(
     ) -> Any:
         """Create new item (Refine create)."""
         with self._direct_principal_scope(current_principal) as resolved_principal:
+            extra_fields: dict[str, Any] = {}
             # Execute before_create hook
             if self.hooks.before_create:
                 context = HookContext(
@@ -397,10 +398,12 @@ class RefineCRUDRouter(
                     session=session,
                     current_principal=resolved_principal,
                 )
-                self._run_hook(self.hooks.before_create, context, item_in)
+                hook_result = self._run_hook(self.hooks.before_create, context, item_in)
+                if isinstance(hook_result, dict):
+                    extra_fields = hook_result
 
             # Create item
-            item = self.model.model_validate(item_in)
+            item = self.model.model_validate(item_in, update=extra_fields)
             session.add(item)
             session.commit()
             session.refresh(item)
@@ -433,16 +436,22 @@ class RefineCRUDRouter(
                 )
 
             # Execute before_update hook
+            extra_fields: dict[str, Any] = {}
             if self.hooks.before_update:
                 context = HookContext(
                     model=self.model,
                     session=session,
                     current_principal=resolved_principal,
                 )
-                self._run_hook(self.hooks.before_update, context, item)
+                hook_result = self._run_hook(
+                    self.hooks.before_update, context, item, item_in
+                )
+                if isinstance(hook_result, dict):
+                    extra_fields = hook_result
 
             # Update item
             update_data = item_in.model_dump(exclude_unset=True)
+            update_data.update(extra_fields)
             item.sqlmodel_update(update_data)
             session.add(item)
             session.commit()
@@ -502,8 +511,6 @@ class RefineCRUDRouter(
 
     def _run_hook(self, hook: Any, *args: Any) -> Any:
         """Run a hook, handling both sync and async hooks."""
-        import inspect
-
         result = hook(*args)
 
         if inspect.isawaitable(result):
