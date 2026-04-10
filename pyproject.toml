@@ -1,6 +1,6 @@
 [project]
 name = "fastapi-refine"
-version = "0.3.0"
+version = "0.3.1"
 description = "FastAPI integration for Refine simple-rest data provider"
 readme = "README.md"
 requires-python = ">=3.10"

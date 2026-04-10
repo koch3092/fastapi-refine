@@ -259,7 +259,9 @@ def test_create_before_create_hook_can_inject_extra_fields():
         hooks=RefineHooks(before_create=before_create),
     )
 
-    created = router.create(item_in=OwnedItemCreateNoOwner(title="owned"), session=session)
+    created = router.create(
+        item_in=OwnedItemCreateNoOwner(title="owned"), session=session
+    )
 
     assert created.title == "owned"
     assert created.owner_id == 7
@@ -272,7 +274,9 @@ def test_owner_based_hooks_inject_owner_on_create():
         create_schema=OwnedItemCreateNoOwner,
     )
 
-    created = router.create(item_in=OwnedItemCreateNoOwner(title="owned"), session=session)
+    created = router.create(
+        item_in=OwnedItemCreateNoOwner(title="owned"), session=session
+    )
 
     assert created.title == "owned"
     assert created.owner_id == 7
@@ -285,9 +289,7 @@ def test_before_update_hook_can_override_update_fields():
     session.commit()
     session.refresh(item)
 
-    def before_update(
-        context: Any, existing_item: Any, item_in: Any
-    ) -> dict[str, int]:
+    def before_update(context: Any, existing_item: Any, item_in: Any) -> dict[str, int]:
         assert context.current_principal is not None
         assert existing_item.id == item.id
         assert item_in.title == "after"

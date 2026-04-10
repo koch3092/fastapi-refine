@@ -72,9 +72,7 @@ class OwnerBasedHooks(RefineHooks[Any]):
 
         return conditions
 
-    def _resolve_owner_fields(
-        self, context: HookContext[Any]
-    ) -> dict[str, Any] | None:
+    def _resolve_owner_fields(self, context: HookContext[Any]) -> dict[str, Any] | None:
         """Return extra fields that bind the record to the current principal."""
         if not context.current_principal:
             return None

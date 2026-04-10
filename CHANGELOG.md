@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-04-10
+
+### Added
+- `before_create` hooks can now return `dict[str, Any]` to inject extra fields into
+  the model during creation (e.g., server-side `owner_id` injection).
+- `before_update` hooks can now return `dict[str, Any]` to inject or override fields
+  in the update payload.
+- `OwnerBasedHooks` now auto-injects `owner_field` on create and enforces it on
+  update, preventing client-side ownership tampering.
+
+### Changed
+- **Breaking:** `before_update` hook signature changed from `(context, item) -> None`
+  to `(context, item, item_in) -> dict | None`. Existing `before_update` hooks must
+  accept the new `item_in` parameter.
+- `before_create` hook return type expanded from `None` to `dict[str, Any] | None`.
+  Existing hooks returning `None` are unaffected.
+
+### Fixed
+- Fixed `OwnerBasedHooks` `before_update` to use the correct 3-argument signature
+  matching the new `BeforeUpdateHook` contract.
+- Removed redundant local `import inspect` in `_run_hook` (already imported at module
+  level).
+
 ## [0.3.0] - 2026-04-09
 
 ### Added

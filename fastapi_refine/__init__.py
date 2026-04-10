@@ -1,6 +1,6 @@
 """fastapi-refine: FastAPI integration for Refine simple-rest data provider."""
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 from fastapi_refine.core import (
     DependencyCallable,
