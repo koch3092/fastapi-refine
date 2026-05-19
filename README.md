@@ -110,13 +110,14 @@ def read_items(
 Generate all CRUD endpoints automatically:
 
 ```python
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi_refine import (
     RefineCRUDRouter,
     FilterConfig,
     FilterField,
     SortConfig,
     configure_refine,
+    refine_error_responses,
 )
 from fastapi_refine.core import parse_bool
 from .models import Item, ItemCreate, ItemUpdate, ItemPublic
@@ -125,6 +126,8 @@ from .database import get_session
 app = FastAPI()
 # Register any numeric status handlers before calling configure_refine(app).
 configure_refine(app)
+
+api_router = APIRouter(responses=refine_error_responses())
 
 # Create router with full CRUD operations
 crud_router = RefineCRUDRouter(
@@ -147,7 +150,8 @@ crud_router = RefineCRUDRouter(
     tags=["items"],
 )
 
-app.include_router(crud_router.router)
+api_router.include_router(crud_router.router)
+app.include_router(api_router)
 ```
 
 This automatically creates:
@@ -213,12 +217,15 @@ Install the app-level Refine integration to normalize FastAPI and package errors
 Refine-friendly JSON responses:
 
 ```python
-from fastapi import FastAPI
-from fastapi_refine import configure_refine
+from fastapi import APIRouter, FastAPI
+from fastapi_refine import configure_refine, refine_error_responses
 
 app = FastAPI()
 # Register numeric status handlers such as 404/409/422 before configure_refine(app).
 configure_refine(app)
+
+# Optional: make OpenAPI match the runtime error envelope.
+api_router = APIRouter(responses=refine_error_responses())
 ```
 
 `configure_refine(app)` is a convenience helper with installation-time snapshot
@@ -245,18 +252,35 @@ When installed, the normalized response envelope uses:
 
 - `message`
 - `statusCode`
-- `code`
 - optional `errors`
+- optional `code` when your app passes an explicit business code
 - optional top-level `detail` when the original `HTTPException.detail` was any
   non-string structured value
 
 For `RefineHTTPException`, `message` stays the primary Refine-facing summary. If you
 pass a more specific `detail_message`, it is preserved as top-level `detail` when the
-handler formats the response.
+handler formats the response. If you pass `code`, it is preserved as an application
+business code. fastapi-refine does not synthesize `code` from the HTTP status because
+Refine's `HttpError` contract only requires `message`, `statusCode`, and optional
+field-level `errors`.
 
 Top-level `errors` are produced only for package-generated `RefineHTTPException`
 values and `RequestValidationError`. Custom structured `HTTPException.detail`
 payloads are preserved under `detail` rather than being auto-promoted to `errors`.
+
+`refine_error_responses()` returns reusable FastAPI `responses` metadata using the
+OpenAPI-visible `RefineErrorResponse` schema. Attach it to an `APIRouter` or individual
+route when you want generated clients to see the same error envelope that runtime
+handlers return:
+
+```python
+from fastapi import APIRouter
+from fastapi_refine import refine_error_responses
+
+api_router = APIRouter(
+    responses=refine_error_responses([400, 401, 403, 404, 409, 422, 503])
+)
+```
 
 If your app needs logging, trace IDs, or extra headers on package-generated Refine
 errors, register a `RefineHTTPException` handler explicitly and delegate to the public

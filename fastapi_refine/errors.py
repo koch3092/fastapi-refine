@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from collections.abc import Iterable, Mapping
 from http import HTTPStatus
 from typing import Any, cast
 
@@ -19,6 +20,7 @@ from fastapi.exceptions import HTTPException as FastAPIHTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.utils import is_body_allowed_for_status_code
+from sqlmodel import SQLModel
 from starlette._utils import is_async_callable
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -27,26 +29,69 @@ from starlette.responses import Response
 
 __all__ = [
     "RefineHTTPException",
+    "RefineErrorResponse",
     "configure_refine",
     "format_refine_http_exception",
     "format_refine_validation_error",
+    "refine_error_responses",
     "refine_http_exception_handler",
     "refine_validation_exception_handler",
 ]
 
-ERROR_CODE_BY_STATUS = {
-    401: "unauthorized",
-    403: "forbidden",
-    404: "not_found",
-    422: "validation_error",
-}
+DEFAULT_REFINE_ERROR_STATUS_CODES = (400, 401, 403, 404, 409, 422, 500)
 REQUEST_LOC_PREFIXES = {"body", "query", "path", "header", "cookie"}
 logger = logging.getLogger("fastapi_refine")
 
 
-def error_code_for_status(status_code: int) -> str:
-    """Map an HTTP status code to a stable error code."""
-    return ERROR_CODE_BY_STATUS.get(status_code, f"http_{status_code}")
+class RefineErrorResponse(SQLModel):
+    """OpenAPI-visible error envelope matching Refine's `HttpError` shape."""
+
+    message: str
+    statusCode: int
+    errors: dict[str, list[str]] | None = None
+    detail: Any | None = None
+    code: str | None = None
+
+
+def _description_for_status(status_code: int) -> str:
+    if status_code == 422:
+        return "Validation Error"
+    try:
+        return HTTPStatus(status_code).phrase
+    except ValueError:
+        return f"HTTP {status_code}"
+
+
+def refine_error_responses(
+    status_codes: Iterable[int] | None = None,
+    *,
+    model: type[Any] = RefineErrorResponse,
+    descriptions: Mapping[int, str] | None = None,
+) -> dict[int, dict[str, Any]]:
+    """Build FastAPI `responses` entries for the Refine error envelope.
+
+    The helper is intentionally explicit: attach the returned mapping to an
+    `APIRouter` or route so OpenAPI matches the runtime envelope configured by
+    `configure_refine(app)`.
+    """
+
+    resolved_status_codes = (
+        DEFAULT_REFINE_ERROR_STATUS_CODES if status_codes is None else status_codes
+    )
+    custom_descriptions = descriptions or {}
+    responses: dict[int, dict[str, Any]] = {}
+
+    for status_code in resolved_status_codes:
+        response: dict[str, Any] = {
+            "description": custom_descriptions.get(
+                status_code, _description_for_status(status_code)
+            )
+        }
+        if is_body_allowed_for_status_code(status_code):
+            response["model"] = model
+        responses[status_code] = response
+
+    return responses
 
 
 class RefineHTTPException(FastAPIHTTPException):
@@ -75,7 +120,7 @@ class RefineHTTPException(FastAPIHTTPException):
         )
         self.message = message
         self.detail_message = detail_message
-        self.code = code or error_code_for_status(status_code)
+        self.code = code
         self.errors = errors
 
 
@@ -97,8 +142,9 @@ def format_refine_http_exception(http_exc: StarletteHTTPException) -> dict[str, 
         normalized = {
             "message": http_exc.message,
             "statusCode": http_exc.status_code,
-            "code": http_exc.code,
         }
+        if http_exc.code is not None:
+            normalized["code"] = http_exc.code
         if http_exc.detail_message and http_exc.detail_message != http_exc.message:
             normalized["detail"] = http_exc.detail_message
         if http_exc.errors is not None:
@@ -111,7 +157,6 @@ def format_refine_http_exception(http_exc: StarletteHTTPException) -> dict[str, 
             {
                 "message": detail,
                 "statusCode": http_exc.status_code,
-                "code": error_code_for_status(http_exc.status_code),
             }
         )
 
@@ -120,7 +165,6 @@ def format_refine_http_exception(http_exc: StarletteHTTPException) -> dict[str, 
             {
                 "message": _default_message_for_status(http_exc.status_code),
                 "statusCode": http_exc.status_code,
-                "code": error_code_for_status(http_exc.status_code),
             }
         )
 
@@ -129,16 +173,17 @@ def format_refine_http_exception(http_exc: StarletteHTTPException) -> dict[str, 
             "message": detail.get("message")
             or _default_message_for_status(http_exc.status_code),
             "statusCode": http_exc.status_code,
-            "code": detail.get("code") or error_code_for_status(http_exc.status_code),
             "detail": detail,
         }
+        code = detail.get("code")
+        if code is not None:
+            normalized["code"] = code
         return _jsonable_payload(normalized)
 
     return _jsonable_payload(
         {
             "message": _default_message_for_status(http_exc.status_code),
             "statusCode": http_exc.status_code,
-            "code": error_code_for_status(http_exc.status_code),
             "detail": detail,
         }
     )
@@ -167,7 +212,6 @@ def format_refine_validation_error(exc: RequestValidationError) -> dict[str, Any
         {
             "message": "Validation failed",
             "statusCode": 422,
-            "code": error_code_for_status(422),
             "errors": _validation_errors_map(exc),
         }
     )

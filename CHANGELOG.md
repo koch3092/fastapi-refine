@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-19
+
+### Added
+- Added `RefineErrorResponse` and `refine_error_responses()` so applications can
+  explicitly attach the Refine error envelope to FastAPI OpenAPI responses.
+
+### Changed
+- Breaking: `code` is now emitted only when an application passes an explicit business code.
+  fastapi-refine no longer derives default `code` values from HTTP status codes.
+
 ## [0.3.1] - 2026-04-10
 
 ### Added

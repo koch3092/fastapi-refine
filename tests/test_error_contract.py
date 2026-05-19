@@ -11,7 +11,7 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlmodel import Field, Session, SQLModel
@@ -23,11 +23,13 @@ from fastapi_refine import (
     FilterField,
     HookContext,
     RefineCRUDRouter,
+    RefineErrorResponse,
     RefineHTTPException,
     SortConfig,
     configure_refine,
     format_refine_http_exception,
     format_refine_validation_error,
+    refine_error_responses,
     refine_http_exception_handler,
     refine_validation_exception_handler,
 )
@@ -185,7 +187,6 @@ def test_configure_refine_rebuilds_existing_middleware_stack():
     assert json.loads(after_body.decode()) == {
         "message": "Item not found",
         "statusCode": 404,
-        "code": "not_found",
     }
 
 
@@ -208,7 +209,6 @@ def test_crud_not_found_is_formatted_as_refine_error():
     assert body == {
         "message": "Item not found",
         "statusCode": 404,
-        "code": "not_found",
     }
 
 
@@ -224,7 +224,6 @@ def test_owner_hooks_errors_are_formatted_as_refine_errors():
     assert unauthorized == {
         "message": "Authentication required",
         "statusCode": 401,
-        "code": "unauthorized",
     }
 
     with pytest.raises(HTTPException) as forbidden_exc:
@@ -242,7 +241,6 @@ def test_owner_hooks_errors_are_formatted_as_refine_errors():
     assert forbidden == {
         "message": "Not enough permissions",
         "statusCode": 403,
-        "code": "forbidden",
     }
 
 
@@ -266,7 +264,6 @@ def test_query_validation_is_formatted_with_root_errors():
 
     assert body["message"] == "Validation failed"
     assert body["statusCode"] == 422
-    assert body["code"] == "validation_error"
     assert body["errors"] == {
         "_root": ["`_end` must be greater than or equal to `_start`."]
     }
@@ -296,7 +293,6 @@ def test_request_validation_errors_are_mapped_to_dot_paths():
     assert body == {
         "message": "Validation failed",
         "statusCode": 422,
-        "code": "validation_error",
         "errors": {
             "title": ["Field required"],
             "items.0.count": ["Input should be a valid integer"],
@@ -315,8 +311,44 @@ def test_format_refine_validation_error_returns_standard_envelope():
     assert body == {
         "message": "Validation failed",
         "statusCode": 422,
-        "code": "validation_error",
         "errors": {"title": ["Field required"]},
+    }
+
+
+def test_refine_error_responses_declares_refine_envelope_schema():
+    app = FastAPI()
+    router = APIRouter(responses=refine_error_responses([409, 422]))
+
+    @router.post("/items")
+    def create_item(item: ItemCreate) -> ItemPublic:
+        return ItemPublic(id=1, title=item.title, owner_id=item.owner_id)
+
+    app.include_router(router)
+
+    schema = app.openapi()
+    operation = schema["paths"]["/items"]["post"]
+    error_schema = schema["components"]["schemas"]["RefineErrorResponse"]
+
+    assert error_schema["required"] == ["message", "statusCode"]
+    assert operation["responses"]["409"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/RefineErrorResponse"
+    }
+    assert operation["responses"]["422"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/RefineErrorResponse"
+    }
+
+
+def test_refine_error_responses_accepts_custom_descriptions():
+    responses = refine_error_responses(
+        [503],
+        descriptions={503: "External service unavailable"},
+    )
+
+    assert responses == {
+        503: {
+            "description": "External service unavailable",
+            "model": RefineErrorResponse,
+        }
     }
 
 
@@ -330,7 +362,6 @@ def test_http_exception_string_detail_is_wrapped():
     assert body == {
         "message": "Unauthorized",
         "statusCode": 401,
-        "code": "unauthorized",
     }
 
 
@@ -373,7 +404,6 @@ def test_http_exception_partial_structured_detail_uses_default_message():
     assert body == {
         "message": "Validation failed",
         "statusCode": 422,
-        "code": "validation_error",
         "detail": {"errors": {"name": ["Required"]}},
     }
 
@@ -391,7 +421,6 @@ def test_http_exception_arbitrary_structured_detail_is_preserved():
     assert body == {
         "message": "Conflict",
         "statusCode": 409,
-        "code": "http_409",
         "detail": {"foo": "bar", "statusCode": 999},
     }
 
@@ -409,7 +438,6 @@ def test_http_exception_list_detail_is_preserved_without_stringifying():
     assert body == {
         "message": "Bad Request",
         "statusCode": 400,
-        "code": "http_400",
         "detail": [{"field": "name", "msg": "Required"}],
     }
 
@@ -431,7 +459,6 @@ def test_http_exception_structured_detail_is_json_encoded():
     assert body == {
         "message": "Bad Request",
         "statusCode": 400,
-        "code": "http_400",
         "detail": {
             "when": "2024-01-01T12:00:00",
             "id": str(event_id),
@@ -450,7 +477,6 @@ def test_format_refine_http_exception_preserves_structured_detail():
     assert body == {
         "message": "Validation failed",
         "statusCode": 422,
-        "code": "validation_error",
         "detail": {"errors": {"name": ["Required"]}},
     }
 
@@ -466,7 +492,6 @@ def test_format_refine_http_exception_preserves_list_detail():
     assert body == {
         "message": "Bad Request",
         "statusCode": 400,
-        "code": "http_400",
         "detail": [{"field": "name", "msg": "Required"}],
     }
 
@@ -540,7 +565,6 @@ def test_configure_refine_does_not_override_custom_starlette_http_handler():
     assert body == {
         "message": "Item not found",
         "statusCode": 404,
-        "code": "not_found",
     }
 
 
@@ -636,7 +660,6 @@ def test_configure_refine_wraps_custom_status_handler_for_refine_http_exception(
     assert refine_body == {
         "message": "Item not found",
         "statusCode": 404,
-        "code": "not_found",
     }
 
     regular_body = run_handler(
@@ -744,7 +767,6 @@ def test_configure_refine_wraps_custom_status_handler_for_refine_422_errors():
     assert refine_body == {
         "message": "Validation failed",
         "statusCode": 422,
-        "code": "validation_error",
         "errors": {"_root": ["Bad input"]},
     }
 
@@ -852,13 +874,11 @@ def test_custom_fastapi_http_handler_coexists_with_starlette_refine_handler():
     assert json.loads(not_found_body.decode()) == {
         "message": "Not Found",
         "statusCode": 404,
-        "code": "not_found",
     }
 
     assert method_status == 405
     assert json.loads(method_body.decode()) == {
         "message": "Method Not Allowed",
         "statusCode": 405,
-        "code": "http_405",
     }
     assert method_headers["allow"] == "GET"
