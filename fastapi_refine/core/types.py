@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from dataclasses import dataclass
-from typing import Any, Protocol, TypeVar
-
-from sqlalchemy import ColumnElement
+from typing import Any, Protocol, TypeAlias, TypeVar
 
 __all__ = [
     "DependencyCallable",
+    "SQLAlchemyColumn",
     "FilterField",
     "FilterConfig",
     "SortConfig",
@@ -17,6 +16,12 @@ __all__ = [
 ]
 
 T_co = TypeVar("T_co", covariant=True)
+
+# SQLModel exposes model attributes to type checkers as their Python value types
+# (for example `str` or `datetime`) even though they behave as SQLAlchemy columns
+# at runtime. Public config input types stay intentionally permissive so users do
+# not need casts when wiring SQLModel fields.
+SQLAlchemyColumn: TypeAlias = Any
 
 
 class DependencyCallable(Protocol[T_co]):
@@ -45,7 +50,7 @@ class FilterField:
         cast: Type converter function (str -> target type)
     """
 
-    column: ColumnElement[Any]
+    column: SQLAlchemyColumn
     cast: Callable[[str], Any]
 
 
@@ -59,7 +64,7 @@ class FilterConfig:
     """
 
     fields: dict[str, FilterField]
-    search_fields: list[ColumnElement[Any]] | None = None
+    search_fields: list[SQLAlchemyColumn] | None = None
 
 
 @dataclass
@@ -70,7 +75,7 @@ class SortConfig:
         fields: Mapping of field names to SQLAlchemy columns
     """
 
-    fields: dict[str, ColumnElement[Any]]
+    fields: dict[str, SQLAlchemyColumn]
 
 
 @dataclass

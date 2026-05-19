@@ -1,6 +1,6 @@
 """fastapi-refine: FastAPI integration for Refine simple-rest data provider."""
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 from fastapi_refine.core import (
     DependencyCallable,
@@ -8,6 +8,7 @@ from fastapi_refine.core import (
     FilterField,
     PaginationConfig,
     SortConfig,
+    SQLAlchemyColumn,
 )
 from fastapi_refine.dependencies import (
     RefineQuery,
@@ -38,6 +39,7 @@ __all__ = [
     "refine_http_exception_handler",
     "refine_validation_exception_handler",
     "DependencyCallable",
+    "SQLAlchemyColumn",
     "FilterConfig",
     "FilterField",
     "SortConfig",

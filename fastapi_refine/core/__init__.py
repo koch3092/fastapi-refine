@@ -13,10 +13,12 @@ from fastapi_refine.core.types import (
     FilterField,
     PaginationConfig,
     SortConfig,
+    SQLAlchemyColumn,
 )
 
 __all__ = [
     "DependencyCallable",
+    "SQLAlchemyColumn",
     "FilterConfig",
     "FilterField",
     "SortConfig",
